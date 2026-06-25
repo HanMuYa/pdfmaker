@@ -46,17 +46,13 @@
 <body>
 
     <div class="container">
-        <h2>单文件矢量 PDF 导出系统</h2>
-        <p>本文件为无依赖独立架构。所有的公文字体完全封装在代码上方的 VFS 内存中。推送到 GitHub 即可直接运行，生成的 PDF 绝不失真，文字完全可复制。</p>
+        <h2>单文件无依赖 PDF 导出系统</h2>
+        <p>已彻底修复图片不认外部 URL 的报错。本页面图片采用 Base64 编码直接嵌入，支持直接双击运行或部署到 GitHub Pages，生成的高清公文文字可复制。</p>
         <button class="btn-gov" onclick="generatePureVectorPDF()">生成并下载标准公文 PDF</button>
     </div>
 
     <script>
-        // =========================================================================
-        // 【核心前置】绑定配置。
-        // 官方默认打包在 vfs_fonts.js 里的标准中文字体 Key 值为 'Roboto'（其实是复合中文字体）。
-        // 为确保绝不报错，我们直接将公文需要的 normal 和 bold 关联指向它即可！
-        // =========================================================================
+        // 配置本地虚拟文件系统里的中文注册关联
         pdfMake.fonts = {
             Roboto: {
                 normal: 'Roboto-Regular.ttf',
@@ -66,14 +62,17 @@
             }
         };
 
-        // 报告内插图占位符：采用绝对同源合规的静态图片进行矢量装载
-        const sampleImageUrl = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80';
+        // =========================================================================
+        // 【核心修复点】将图片转换为合规的 DataURL（Base64 编码的灰色折线图占位符）。
+        // 这样 pdfmake 可以直接从内存读取像素，不需要发起任何可能引发报错的网络请求。
+        // =========================================================================
+        const base64ChartImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAGQAQMAAAD/+4YVAAAABlBMVEUAAAD///+l2Z/dAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAMklEQVR42u3BAQEAAACCIP+vbkhAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO8GZ2gAAWOwBf0AAAAASUVORK5CYII=';
 
         function generatePureVectorPDF() {
             // 定义符合我国国家公文标准（GB/T 9704-2012）的声明结构体
             const docDefinition = {
                 pageSize: 'A4',
-                // 国标版心边距：上37mm 下35mm 左28mm 右26mm -> 对应转化为 pdfmake 的 pt 物理点数
+                // 国标版心边距：上37mm 下35mm 左28mm 右26mm
                 pageMargins: [79, 105, 74, 99], 
 
                 defaultStyle: {
@@ -89,7 +88,7 @@
                         style: 'govMainTitle' 
                     },
                     
-                    // 一级标题一（加粗）
+                    // 一级标题一
                     { text: '一、 调研背景与概述', style: 'govH1' },
                     { 
                         text: '随着新高考改革在全国范围内的纵深推进，“分类考试、综合评价、多元录取”的格局已基本确立。2026年，全国高考报名人数再创新高，各省份生源结构、志愿填报模式以及高校录取率呈现出全新的地缘特征。', 
@@ -106,17 +105,18 @@
                         style: 'govParagraph' 
                     },
 
-                    // 【图片插入组件】：完美融入矢量流，并增加居中与国标图题标注
+                    // 【核心修复组件】：使用经过内存固化的 Base64 变量，安全渲染插图
                     {
-                        image: sampleImageUrl,
+                        image: base64ChartImage,
                         width: 440, // 撑满整个公文版心宽度
+                        height: 100, // 设定基础占位高度
                         alignment: 'center',
                         margin: [0, 15, 0, 5]
                     },
                     { 
                         text: '图 1：2026年核心省份高考报名基数梯队分布图 (单位：人次)', 
                         style: 'govImgCaption',
-                        pageBreak: 'after' // 强制在这里切断分页，完美隔离表格，防御生硬截断
+                        pageBreak: 'after' // 强行在此切断分页，确保排版整洁
                     },
 
                     // ================= 第二页内容 =================
@@ -138,35 +138,30 @@
                             headersRows: 1,
                             widths: ['12%', '33%', '25%', '30%'],
                             body: [
-                                // 表头行（深灰底、白字、加粗）
                                 [
                                     { text: '编号', style: 'tableHeader' },
                                     { text: '匹配省份 / 地缘分支说明', style: 'tableHeader' },
                                     { text: '实际业务量\n(考生频次)', style: 'tableHeader' },
                                     { text: '全局数量占比与状态解释', style: 'tableHeader' }
                                 ],
-                                // 数据热力行 - NO.1（深蓝热力）
                                 [
                                     { text: 'NO.1', style: 'tableCellBold' },
                                     { text: '河南生源核心区', style: 'tableCellBold', alignment: 'left' },
                                     { text: '1,310,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.6)', color: 'white' },
                                     { text: '11.2%\n(基数极高，面临结构性倒挂)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.6)', color: 'white' }
                                 ],
-                                // 数据热力行 - NO.2（中蓝热力）
                                 [
                                     { text: 'NO.2', style: 'tableCellBold' },
                                     { text: '山东战略合作区', style: 'tableCellBold', alignment: 'left' },
                                     { text: '980,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' },
                                     { text: '8.4%\n(志愿滑档率显著下降)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' }
                                 ],
-                                // 数据热力行 - NO.3（中蓝热力）
                                 [
                                     { text: 'NO.3', style: 'tableCellBold' },
                                     { text: '广东生源密集区', style: 'tableCellBold', alignment: 'left' },
                                     { text: '860,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' },
                                     { text: '7.3%\n(省内高校扩招吸纳力强)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' }
                                 ],
-                                // 异常值/审计核减红字行：展示超长文本与智能对齐防御
                                 [
                                     { text: 'NO.6', style: 'tableCellBold' },
                                     { text: '部分特殊边缘地缘独立招生...', style: 'tableCellBold', alignment: 'left' },
@@ -175,7 +170,6 @@
                                 ]
                             ]
                         },
-                        // 细线型格栅网格线配置
                         layout: {
                             hLineWidth: () => 1,
                             vLineWidth: () => 1,
@@ -192,73 +186,22 @@
                     }
                 ],
 
-                // 定义全局公文样式字典类
                 styles: {
-                    govMainTitle: {
-                        fontSize: 28, // 二号
-                        bold: true,
-                        alignment: 'center',
-                        lineHeight: 1.4,
-                        margin: [0, 10, 0, 35]
-                    },
-                    govH1: {
-                        fontSize: 16, // 三号
-                        bold: true,
-                        margin: [0, 20, 0, 10]
-                    },
-                    govH2: {
-                        fontSize: 16,
-                        bold: true,
-                        margin: [0, 15, 0, 8]
-                    },
-                    govParagraph: {
-                        fontSize: 15, // 三号字大小
-                        lineHeight: 1.6,
-                        leadingIndent: 30, // 首行完美缩进两个汉字宽度
-                        alignment: 'justify', // 两端强制对齐
-                        margin: [0, 0, 0, 12]
-                    },
-                    govImgCaption: {
-                        fontSize: 11,
-                        color: '#4A5568',
-                        alignment: 'center',
-                        margin: [0, 5, 0, 15]
-                    },
-                    govTableStyle: {
-                        margin: [0, 15, 0, 20]
-                    },
-                    tableHeader: {
-                        fontSize: 11,
-                        bold: true,
-                        fillColor: '#2C3E50',
-                        color: 'white',
-                        alignment: 'center',
-                        margin: [0, 6, 0, 6]
-                    },
-                    tableCell: {
-                        fontSize: 10,
-                        alignment: 'center',
-                        margin: [0, 8, 0, 8]
-                    },
-                    tableCellBold: {
-                        fontSize: 10,
-                        bold: true,
-                        alignment: 'center',
-                        margin: [0, 8, 0, 8]
-                    },
-                    tableCellAlert: {
-                        fontSize: 10,
-                        bold: true,
-                        fillColor: '#FFF5F5',
-                        color: '#C53030', // 精准红字警告样式
-                        alignment: 'center',
-                        margin: [0, 6, 0, 6]
-                    }
+                    govMainTitle: { fontSize: 28, bold: true, alignment: 'center', lineHeight: 1.4, margin: [0, 10, 0, 35] },
+                    govH1: { fontSize: 16, bold: true, margin: [0, 20, 0, 10] },
+                    govH2: { fontSize: 16, bold: true, margin: [0, 15, 0, 8] },
+                    govParagraph: { fontSize: 15, lineHeight: 1.6, leadingIndent: 30, alignment: 'justify', margin: [0, 0, 0, 12] },
+                    govImgCaption: { fontSize: 11, color: '#4A5568', alignment: 'center', margin: [0, 5, 0, 15] },
+                    govTableStyle: { margin: [0, 15, 0, 20] },
+                    tableHeader: { fontSize: 11, bold: true, fillColor: '#2C3E50', color: 'white', alignment: 'center', margin: [0, 6, 0, 6] },
+                    tableCell: { fontSize: 10, alignment: 'center', margin: [0, 8, 0, 8] },
+                    tableCellBold: { fontSize: 10, bold: true, alignment: 'center', margin: [0, 8, 0, 8] },
+                    tableCellAlert: { fontSize: 10, bold: true, fillColor: '#FFF5F5', color: '#C53030', alignment: 'center', margin: [0, 6, 0, 6] }
                 }
             };
 
-            // 唤醒内存编译器，一键导出矢量文件
-            pdfMake.createPdf(docDefinition).download('关于新高考改革下生源演变与录取率的调研报告(纯单文件版).pdf');
+            // 导出 PDF 矢量文件
+            pdfMake.createPdf(docDefinition).download('关于新高考改革下生源演变与录取率的调研报告.pdf');
         }
     </script>
 </body>
