@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>关于新高考改革下生源演变与录取率的多维度调研报告</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        /* 全局公文标准样式重置 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #F3F4F6;
+            padding: 40px 0;
+        }
+        
+        /* 顶部悬浮控制台 */
+        .control-panel {
+            width: 210mm;
+            margin: 0 auto 15px auto;
+            text-align: right;
+        }
+        .btn-export {
+            background-color: #A61E22; /* 党政公文经典红 */
+            color: #FFFFFF;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-export:hover {
+            background-color: #851417;
+            box-shadow: 0 4px 12px rgba(166, 30, 34, 0.2);
+        }
+
+        /* 严格对照国家标准公文 A4 页面（210mm × 297mm） */
+        .gov-page {
+            width: 210mm;
+            min-height: 297mm;
+            /* 国标版心边距：上37mm 下35mm 左28mm 右26mm，换算为近似像素 */
+            padding: 37mm 26mm 35mm 28mm;
+            margin: 0 auto 30px auto;
+            background: #FFFFFF;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+            page-break-after: always; /* 核心：jsPDF 硬性断页防跨页崩坏 */
+        }
+
+        /* --- 公文特定字体与字号规范 --- */
+        /* 标题：二号小标宋体 */
+        .gov-title {
+            font-family: "SimSun", "STSong", "华文中宋", serif;
+            font-size: 29px; /* 二号字 */
+            font-weight: bold;
+            color: #000000;
+            text-align: center;
+            line-height: 1.4;
+            margin-bottom: 35px;
+        }
+        /* 一级标题：三号黑体 */
+        .gov-h1 {
+            font-family: "SimHei", "STHeiti", "黑体", sans-serif;
+            font-size: 22px; /* 三号字 */
+            font-weight: bold;
+            color: #000000;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+        /* 二级标题：三号楷体加粗 */
+        .gov-h2 {
+            font-family: "KaiTi", "STKaiti", "楷体", serif;
+            font-size: 22px;
+            font-weight: bold;
+            color: #000000;
+            margin-top: 20px;
+            margin-bottom: 12px;
+        }
+        /* 正文：三号仿宋，行距固定位为 28-30 磅 */
+        .gov-p {
+            font-family: "FangSong", "STFangsong", "仿宋", serif;
+            font-size: 22px; /* 三号字 */
+            color: #000000;
+            line-height: 1.6; /* 对标 28磅 行距 */
+            text-align: justify;
+            text-indent: 44px; /* 严格首行缩进两个汉字 */
+            margin-bottom: 14px;
+        }
+
+        /* --- 公文内置图表容器规范 --- */
+        .gov-img-container {
+            width: 100%;
+            margin: 25px 0;
+            text-align: center;
+            background-color: #FAFAFA;
+            border: 1px solid #E2E8F0;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .gov-img-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #CBD5E0;
+        }
+        .gov-img-caption {
+            font-family: "KaiTi", "楷体", serif;
+            font-size: 16px;
+            color: #4A5568;
+            margin-top: 8px;
+        }
+
+        /* --- 公文内置热力数据矩阵表格（维持大字号黄金呼吸感） --- */
+        .gov-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-family: "FangSong", "仿宋", serif;
+        }
+        .gov-table th {
+            font-family: "SimHei", "黑体", sans-serif;
+            background-color: #2C3E50; /* 采用商业沉稳深灰作为表头 */
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 12px;
+            border: 1px solid #B0B0B0;
+        }
+        .gov-table td {
+            font-size: 15px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #B0B0B0;
+            color: #000000;
+        }
+        /* 数量列与占比列专属蓝轴热力渲染（防文字重叠、大字号清晰化） */
+        .rank-high { background-color: rgba(43, 108, 176, 0.6) !important; color: #FFFFFF !important; font-weight: bold; }
+        .rank-med  { background-color: rgba(43, 108, 176, 0.3) !important; font-weight: bold; }
+        .rank-low  { background-color: rgba(43, 108, 176, 0.1) !important; font-weight: bold; }
+        
+        /* 针对NO.6这种异常负数状态的智能红字财务文本解释 */
+        .status-alert {
+            background-color: #FFF5F5 !important;
+            color: #C53030 !important;
+            font-weight: bold;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <button class="btn-export" onclick="exportGovReportPDF()">导出符合国标公文标准的 PDF</button>
+    </div>
+
+    <div id="pdf-content-wrapper">
+        
+        <div class="gov-page">
+            <h1 class="gov-title">关于新高考改革下生源演变与<br>录取率的多维度调研报告</h1>
+            
+            <div class="gov-h1">一、 调研背景与概述</div>
+            <div class="gov-p">随着新高考改革在全国范围内的纵深推进，“分类考试、综合评价、多元录取”的格局已基本确立。2026年，全国高考报名人数再创新高，各省份生源结构、志愿填报模式以及高校录取率呈现出全新的地缘特征。</div>
+            <div class="gov-p">为全面掌握新高考背景下人才选拔与地方教育资源配置的实际状况，课题组历时数月，对全国核心省份的生源演变、录取率剪刀差及特殊类型招生名额调剂进行了多维度专项调研，形成了本项内部参考报告。</div>
+            
+            <div class="gov-h1">二、 核心省份生源梯队与数量分布</div>
+            <div class="gov-p">调研数据表明，我国各省份高考报名基数呈现出极强的阶梯性与地缘聚集特征。传统高考大省在宏观盘面中依然占据绝对权重，给当地的高等教育资源配给带来了持续性压力。</div>
+            
+            <div class="gov-img-container">
+                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80" alt="各省份高考报名人数横向对比条形图">
+                <div class="gov-img-caption">图 1：2026年核心省份高考报名基数梯队分布图 (单位：人次)</div>
+            </div>
+        </div>
+
+        <div class="gov-page">
+            <div class="gov-p">从上图可以直观看出，以河南、山东、广东为代表的传统人口大省，其考生基数在全局数量占比中居高不下，形成了显著的第一生源梯队。这种极高的生源密度，直接拉高了地缘内的竞争烈度。</div>
+            
+            <div class="gov-h1">三、 录取率剪刀差与地缘分配矩阵</div>
+            <div class="gov-p">在生源基数持续扩张的背景下，各省份的实际业务量（计划投放数）与全局数量占比之间存在一定的动态调整。下表呈现了部分核心省份及地缘分支在本次调研中的具体表现：</div>
+
+            <table class="gov-table">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">编号</th>
+                        <th style="width: 35%;">匹配省份 / 地缘分支说明</th>
+                        <th style="width: 25%;">实际业务量 (考生频次)</th>
+                        <th style="width: 30%;">全局数量占比与状态解释</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>NO.1</td>
+                        <td style="font-weight: bold;">河南生源核心区</td>
+                        <td class="rank-high">1,310,000 个</td>
+                        <td class="rank-high">11.2%</td>
+                    </tr>
+                    <tr>
+                        <td>NO.2</td>
+                        <td style="font-weight: bold;">山东战略合作区</td>
+                        <td class="rank-med">980,000 个</td>
+                        <td class="rank-med">8.4%</td>
+                    </tr>
+                    <tr>
+                        <td>NO.3</td>
+                        <td style="font-weight: bold;">广东生源密集区</td>
+                        <td class="rank-med">860,000 个</td>
+                        <td class="rank-med">7.3%</td>
+                    </tr>
+                    <tr>
+                        <td>NO.4</td>
+                        <td style="font-weight: bold;">四川多维保障区</td>
+                        <td class="rank-low">770,000 个</td>
+                        <td class="rank-low">6.6%</td>
+                    </tr>
+                    <tr>
+                        <td>NO.5</td>
+                        <td style="font-weight: bold;">河北综合示范区</td>
+                        <td class="rank-low">630,000 个</td>
+                        <td class="rank-low">5.4%</td>
+                    </tr>
+                    <tr>
+                        <td>NO.6</td>
+                        <td style="font-weight: bold;">部分特殊边缘地缘独立招生...</td>
+                        <td class="status-alert">-4,500 个</td>
+                        <td class="status-alert">账面呈核减状态，不计入正向分配<br>(属计划名额调剂与资格复核)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="gov-h1">四、 核心问题研判与对策建议</div>
+            <div class="gov-h2">（一） 跨省户籍合规性审查机制需进一步常态化</div>
+            <div class="gov-p">针对NO.6等边远地区在审计中出现的特殊计划名额核减，主要受到跨省“高考移民”严查及定向强基计划名额二次调配的影响。建议各地方教育行政部门建立跨部门数据共享机制，在报名阶段即对户籍、学籍实施穿透式审查。</div>
+            
+            <div class="gov-h2">（二） 建立录取率动态补偿机制，消减地缘竞争剪刀差</div>
+            <div class="gov-p">第一梯队大省的宏观占比优势并未完全转化为同比例的一本录取率优势。中央部属高校应根据各省生源基数的动态演变，适度向生源核心区倾斜新增招生计划，利用“政策增量”逐步稀释历史形成的录取率差额。</div>
+        </div>
+
+    </div>
+
+    <script>
+        function exportGovReportPDF() {
+            const btn = document.querySelector('.btn-export');
+            btn.innerText = '正在生成标准公文PDF...';
+            btn.style.background = '#718096';
+            btn.disabled = true;
+
+            const { jsPDF } = window.jspdf;
+            // 严格以 1:1 的 A4 毫米比例初始化
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pages = document.querySelectorAll('.gov-page');
+            let currentPageIndex = 0;
+
+            function renderNextPage() {
+                if (currentPageIndex >= pages.length) {
+                    pdf.save('关于新高考改革下生源演变与录取率的调研报告_' + new Date().getTime() + '.pdf');
+                    btn.innerText = '导出符合国标公文标准的 PDF';
+                    btn.style.background = '#A61E22';
+                    btn.disabled = false;
+                    return;
+                }
+
+                const pageDOM = pages[currentPageIndex];
+
+                html2canvas(pageDOM, {
+                    scale: 2, // 2倍超采样抗锯齿，确保三号字仿宋体在打印时边缘绝对锐利清晰
+                    useCORS: true,
+                    background: '#FFFFFF'
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+                    
+                    if (currentPageIndex > 0) {
+                        pdf.addPage();
+                    }
+
+                    // 精准打入 A4 坐标系内，确保生成的 PDF 绝无溢出或白边
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                    
+                    currentPageIndex++;
+                    renderNextPage(); // 异步队列递归防止线程死锁
+                });
+            }
+
+            renderNextPage();
+        }
+    </script>
+</body>
+</html>
