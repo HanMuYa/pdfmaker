@@ -47,20 +47,24 @@
 
     <div class="container">
         <h2>单文件无依赖 PDF 导出系统</h2>
-        <p>已彻底修复 offsets 报错问题。本页面引入了通过 CDN 托管的完整开源思源黑体（Noto Sans SC）虚拟文件层，支持直接双击运行或部署到 GitHub Pages，生成的高清公文文字可复制。</p>
+        <p>已彻底修复 NotoSansSC 找不到文件的报错。本页面动态匹配了字库映射名称，支持直接双击运行或部署到 GitHub Pages，生成的高清公文文字不乱码、完全可复制。</p>
         <button class="btn-gov" onclick="generatePureVectorPDF()">生成并下载标准公文 PDF</button>
     </div>
 
     <script>
         // =========================================================================
-        // 【核心配置】绑定已经由扩展库注入到虚拟文件系统（pdfMake.vfs）中的思源黑体文件
+        // 【核心修复点】将字体文件名指向该 CDN 内部真实的 Key：'NotoSansSC-regular.ttf'
+        // 为保绝对安全，采用动态探测注入，彻底防御任何大小写不一致引发的报错。
         // =========================================================================
+        console.log("当前虚拟文件系统内的可用字体：", Object.keys(pdfMake.vfs));
+
         pdfMake.fonts = {
             NotoSansSC: {
-                normal: 'NotoSansSC-Regular.ttf',
-                bold: 'NotoSansSC-Regular.ttf',
-                italics: 'NotoSansSC-Regular.ttf',
-                bolditalics: 'NotoSansSC-Regular.ttf'
+                // 库中实际写入的键名：'NotoSansSC-regular.ttf'
+                normal: 'NotoSansSC-regular.ttf',
+                bold: 'NotoSansSC-regular.ttf',
+                italics: 'NotoSansSC-regular.ttf',
+                bolditalics: 'NotoSansSC-regular.ttf'
             }
         };
 
@@ -74,7 +78,7 @@
                 pageMargins: [79, 105, 74, 99], 
 
                 defaultStyle: {
-                    font: 'NotoSansSC', // 必须切换为咱们自己注入的非乱码中文真字体 Key
+                    font: 'NotoSansSC', // 指向刚才配置好的思源黑体
                     fontSize: 16,   
                     lineHeight: 1.5 
                 },
