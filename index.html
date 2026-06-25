@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>基于 pdfmake 的纯矢量公文导出系统</title>
+    <!-- 引入 pdfmake 现代官方核心库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #F3F4F6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            max-width: 500px;
+        }
+        h2 { color: #2C3E50; margin-bottom: 15px; font-size: 20px; }
+        p { color: #718096; font-size: 14px; line-height: 1.6; margin-bottom: 25px; }
+        .btn-gov {
+            background-color: #A61E22; /* 国标公文红 */
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-gov:hover { background-color: #851417; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>pdfmake 纯矢量公文生成系统</h2>
+        <p>本方案彻底抛弃图片截图。PDF 内部所有的文字（仿宋/黑体）、线条、表格和热力色彩均由底层的 PDF 矢量坐标计算生成。</p>
+        <button class="btn-gov" onclick="generateVectorPDF()">生成并下载矢量公文（文字可复制）</button>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 【核心前置】由于 pdfmake 是内存矢量渲染，必须为它注册中文字体库
+        // 这里通过官方虚拟文件系统（vfs）注入常用的开源中文中宋（替代仿宋/宋体）与黑体
+        // =========================================================================
+        pdfMake.fonts = {
+            SourceHanSerif: {
+                normal: 'https://cdn.jsdelivr.net/npm/@fontsource/source-han-serif-sc@5.0.13/files/source-han-serif-sc-chinese-simplified-400-normal.woff', // 用于正文和标题
+                bold: 'https://cdn.jsdelivr.net/npm/@fontsource/source-han-serif-sc@5.0.13/files/source-han-serif-sc-chinese-simplified-700-normal.woff',
+            },
+            SourceHanSans: {
+                normal: 'https://cdn.jsdelivr.net/npm/@fontsource/source-han-sans-sc@5.0.12/files/source-han-sans-sc-chinese-simplified-400-normal.woff', // 用于表格和黑体标题
+                bold: 'https://cdn.jsdelivr.net/npm/@fontsource/source-han-sans-sc@5.0.12/files/source-han-sans-sc-chinese-simplified-700-normal.woff'
+            }
+        };
+
+        // 为了配合图片插入，提前准备好公文插图的 Base64 或者是可跨域的网络图片
+        // 生产环境建议直接转换为纯 base64 字符串以防网络超时导致生成失败
+        const sampleImageUrl = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80';
+
+        function generateVectorPDF() {
+            // 定义符合我国国家公文标准（GB/T 9704-2012）的文档声明结构体
+            const docDefinition = {
+                // 1. 严格设定 A4 物理画布与国标版心边距
+                // 国标：上37mm 下35mm 左28mm 右26mm -> 对应转化为 pdfmake 的 pt 点数
+                pageSize: 'A4',
+                pageMargins: [79, 105, 74, 99], 
+
+                // 2. 指定默认全局字体为思源宋体（完美对应公文宋体质感）
+                defaultStyle: {
+                    font: 'SourceHanSerif',
+                    fontSize: 16, // 三号字（16pt）
+                    lineHeight: 1.5 // 对标公文 28磅 行间距
+                },
+
+                // 3. 报告正文全量矢量节点流
+                content: [
+                    // 报告大标题（二号小标宋体）
+                    { 
+                        text: '关于新高考改革下生源演变与\n录取率的多维度调研报告', 
+                        style: 'govMainTitle' 
+                    },
+                    
+                    // 一级标题一（三号黑体）
+                    { text: '一、 调研背景与概述', style: 'govH1' },
+                    { 
+                        text: '随着新高考改革在全国范围内的纵深推进，“分类考试、综合评价、多元录取”的格局已基本确立。2026年，全国高考报名人数再创新高，各省份生源结构、志愿填报模式以及高校录取率呈现出全新的地缘特征。', 
+                        style: 'govParagraph' 
+                    },
+                    { 
+                        text: '为全面掌握新高考背景下人才选拔与地方教育资源配置的实际状况，课题组历时数月，对全国核心省份的生源演变、录取率剪刀差及特殊类型招生名额调剂进行了多维度专项调研，形成了本项内部参考报告。', 
+                        style: 'govParagraph' 
+                    },
+
+                    { text: '二、 核心省份生源梯队与数量分布', style: 'govH1' },
+                    { 
+                        text: '调研数据表明，我国各省份高考报名基数呈现出极强的阶梯性与地缘聚集特征。传统高考大省在宏观盘面中依然占据绝对权重，给当地的高等教育资源配给带来了持续性压力。', 
+                        style: 'govParagraph' 
+                    },
+
+                    // 【图片插入组件】：完美融入矢量流，并增加居中与国标图题标注
+                    {
+                        image: sampleImageUrl,
+                        width: 440, // 撑满整个版心宽度
+                        alignment: 'center',
+                        margin: [0, 15, 0, 5]
+                    },
+                    { 
+                        text: '图 1：2026年核心省份高考报名基数梯队分布图 (单位：人次)', 
+                        style: 'govImgCaption',
+                        pageBreak: 'after' // 强制在这里切断分页，防御表格被生硬拦腰截断
+                    },
+
+                    // ================= 第二页内容 =================
+                    { 
+                        text: '从上图可以直观看出，以河南、山东、广东为代表的传统人口大省，其考生基数在全局数量占比中居高不下，形成了显著的第一生源梯队。这种极高的生源密度，直接拉高了地缘内的竞争烈度。', 
+                        style: 'govParagraph' 
+                    },
+                    
+                    { text: '三、 录取率剪刀差与地缘分配矩阵', style: 'govH1' },
+                    { 
+                        text: '在生源基数持续扩张的背景下，各省份的实际业务量（计划投放数）与全局数量占比之间存在一定的动态调整。下表呈现了部分核心省份及地缘分支在本次调研中的具体表现：', 
+                        style: 'govParagraph' 
+                    },
+
+                    // 【核心看板组件】：大字号、高呼吸感、高对比度热力数据矩阵表格
+                    {
+                        style: 'govTableStyle',
+                        table: {
+                            headersRows: 1,
+                            // 严格定义四列的宽度权重比例
+                            widths: ['10%', '35%', '25%', '30%'],
+                            body: [
+                                // 表头行（深灰底、白字、加粗黑体）
+                                [
+                                    { text: '编号', style: 'tableHeader' },
+                                    { text: '匹配省份 / 地缘分支说明', style: 'tableHeader' },
+                                    { text: '实际业务量\n(考生频次)', style: 'tableHeader' },
+                                    { text: '全局数量占比与状态解释', style: 'tableHeader' }
+                                ],
+                                // 数据热力行 - NO.1（深蓝热力）
+                                [
+                                    { text: 'NO.1', style: 'tableCellBold' },
+                                    { text: '河南生源核心区', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '1,310,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.6)', color: 'white' },
+                                    { text: '11.2%\n(基数极高，面临结构性倒挂)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.6)', color: 'white' }
+                                ],
+                                // 数据热力行 - NO.2（中蓝热力）
+                                [
+                                    { text: 'NO.2', style: 'tableCellBold' },
+                                    { text: '山东战略合作区', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '980,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' },
+                                    { text: '8.4%\n(志愿滑档率显著下降)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' }
+                                ],
+                                // 数据热力行 - NO.3（中蓝热力）
+                                [
+                                    { text: 'NO.3', style: 'tableCellBold' },
+                                    { text: '广东生源密集区', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '860,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' },
+                                    { text: '7.3%\n(省内高校扩招吸纳力强)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.3)' }
+                                ],
+                                // 数据热力行 - NO.4（浅蓝热力）
+                                [
+                                    { text: 'NO.4', style: 'tableCellBold' },
+                                    { text: '四川多维保障区', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '770,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.1)' },
+                                    { text: '6.6%\n(政策性定向红利显现)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.1)' }
+                                ],
+                                // 数据热力行 - NO.5（浅蓝热力）
+                                [
+                                    { text: 'NO.5', style: 'tableCellBold' },
+                                    { text: '河北综合示范区', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '630,000 个', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.1)' },
+                                    { text: '5.4%\n(院校专业组投档线平稳)', style: 'tableCell', fillColor: 'rgba(43, 108, 176, 0.1)' }
+                                ],
+                                // 异常值/审计核减红字行：展示超长文本与智能对齐防御
+                                [
+                                    { text: 'NO.6', style: 'tableCellBold' },
+                                    { text: '部分特殊边缘地缘独立招生...', style: 'tableCellBold', alignment: 'left' },
+                                    { text: '-4,500 个', style: 'tableCellAlert' },
+                                    { text: '账面呈核减状态，不计入正向分配\n(属计划名额调剂与资格复核)', style: 'tableCellAlert' }
+                                ]
+                            ]
+                        },
+                        // 允许通过物理布局微调表格的上下空气呼吸感
+                        layout: {
+                            hLineWidth: function (i, node) { return 1; },
+                            vLineWidth: function (i, node) { return 1; },
+                            hLineColor: function (i, node) { return '#B0B0B0'; },
+                            vLineColor: function (i, node) { return '#B0B0B0'; }
+                        }
+                    },
+
+                    { text: '四、 核心问题研判与对策建议', style: 'govH1' },
+                    { text: '（一） 跨省户籍合规性审查机制需进一步常态化', style: 'govH2' },
+                    { 
+                        text: '针对NO.6等边远地区在审计中出现的特殊计划名额核减，主要受到跨省“高考移民”严查及定向强基计划名额二次调配的影响。建议各地方教育行政部门建立跨部门数据共享机制，在报名阶段即对户籍、学籍实施穿透式审查，确保招生名额的政务合规。', 
+                        style: 'govParagraph' 
+                    },
+                    
+                    { text: '（二） 建立录取率动态补偿机制，消减地缘竞争剪刀差', style: 'govH2' },
+                    { 
+                        text: '第一梯队大省的宏观占比优势并未完全转化为同比例的一本录取率优势。中央部属高校应根据各省生源基数的动态演变，适度向生源核心区倾斜新增招生计划，利用“政策增量”逐步稀释历史形成的录取率差额。', 
+                        style: 'govParagraph' 
+                    }
+                ],
+
+                // 4. 定义全局公文样式字典类（对应原有 CSS 的完美映射）
+                styles: {
+                    govMainTitle: {
+                        font: 'SourceHanSerif',
+                        fontSize: 28, // 二号小标宋体
+                        bold: true,
+                        alignment: 'center',
+                        lineHeight: 1.4,
+                        margin: [0, 10, 0, 35]
+                    },
+                    govH1: {
+                        font: 'SourceHanSans', // 严格调用黑体
+                        fontSize: 16, // 三号黑体
+                        bold: true,
+                        margin: [0, 20, 0, 10]
+                    },
+                    govH2: {
+                        font: 'SourceHanSerif', // 楷体/宋体加粗
+                        fontSize: 16,
+                        bold: true,
+                        margin: [0, 15, 0, 8]
+                    },
+                    govParagraph: {
+                        font: 'SourceHanSerif',
+                        fontSize: 15, // 三号字大小
+                        lineHeight: 1.6,
+                        leadingIndent: 30, // 严格实现前端的首行缩进两个中文字符宽度
+                        alignment: 'justify', // 左右两侧两端完美对齐
+                        margin: [0, 0, 0, 12]
+                    },
+                    govImgCaption: {
+                        font: 'SourceHanSerif',
+                        fontSize: 11,
+                        color: '#4A5568',
+                        alignment: 'center',
+                        margin: [0, 5, 0, 15]
+                    },
+                    // --- 表格内部组件特定样式样式 ---
+                    govTableStyle: {
+                        margin: [0, 15, 0, 20]
+                    },
+                    tableHeader: {
+                        font: 'SourceHanSans',
+                        fontSize: 11,
+                        bold: true,
+                        fillColor: '#2C3E50', // 经典高管深灰
+                        color: 'white',
+                        alignment: 'center',
+                        margin: [0, 6, 0, 6]
+                    },
+                    tableCell: {
+                        font: 'SourceHanSans',
+                        fontSize: 10,
+                        alignment: 'center',
+                        margin: [0, 8, 0, 8]
+                    },
+                    tableCellBold: {
+                        font: 'SourceHanSans',
+                        fontSize: 10,
+                        bold: true,
+                        alignment: 'center',
+                        margin: [0, 8, 0, 8]
+                    },
+                    tableCellAlert: {
+                        font: 'SourceHanSans',
+                        fontSize: 10,
+                        bold: true,
+                        fillColor: '#FFF5F5',
+                        color: '#C53030', // 精准红字警告样式
+                        alignment: 'center',
+                        margin: [0, 6, 0, 6]
+                    }
+                }
+            };
+
+            // 唤醒 pdfmake 内置编译器生成矢量 PDF 文件
+            pdfMake.createPdf(docDefinition).download('关于新高考改革下生源演变与录取率的调研报告(纯矢量版).pdf');
+        }
+    </script>
+</body>
+</html>
